@@ -2,7 +2,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.snowflake.hooks.snowflake import SnowflakeHook
 from airflow.models import Variable
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
 import json
 import uuid
@@ -24,14 +24,23 @@ def extract_and_load():
     hook.run("USE DATABASE user_db_chipmunk")
     hook.run("USE SCHEMA SCHEMA_WEATHER")
 
+    today = datetime.utcnow().date()
+    start_date = today - timedelta(days=60)
+
     for loc in locations:
+        lat = loc["lat"]
+        lon = loc["lon"]
+        location_name = f"{lat}_{lon}"
+
         response = requests.get(
             "https://api.open-meteo.com/v1/forecast",
             params={
-                "latitude": loc["lat"],
-                "longitude": loc["lon"],
+                "latitude": lat,
+                "longitude": lon,
                 "hourly": hourly_fields,
-                "timezone": timezone
+                "timezone": timezone,
+                "start_date": start_date.strftime("%Y-%m-%d"),
+                "end_date": today.strftime("%Y-%m-%d")
             }
         )
 
@@ -39,9 +48,10 @@ def extract_and_load():
 
         insert_sql = """
         INSERT INTO OPEN_METEO_RAW
-        (INGEST_ID, INGEST_TS_UTC, LAT, LON, API_URL, RESPONSE_JSON)
+        (INGEST_ID, INGEST_TS_UTC, LOCATION_NAME, LAT, LON, API_URL, RESPONSE_JSON)
         SELECT %s,
                CURRENT_TIMESTAMP(),
+               %s,
                %s,
                %s,
                %s,
@@ -52,8 +62,9 @@ def extract_and_load():
             insert_sql,
             parameters=(
                 str(uuid.uuid4()),
-                loc["lat"],
-                loc["lon"],
+                location_name,
+                lat,
+                lon,
                 response.url,
                 json.dumps(data)
             )

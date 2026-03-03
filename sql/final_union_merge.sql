@@ -1,6 +1,6 @@
--- =====================================
--- FINAL UNION + TRANSACTION LOGIC
--- =====================================
+-- =========================================
+-- LAB 1: FINAL UNION WITH TRANSACTION
+-- =========================================
 
 USE WAREHOUSE chipmunk_wh;
 USE DATABASE user_db_chipmunk;
@@ -8,13 +8,29 @@ USE SCHEMA SCHEMA_WEATHER;
 
 BEGIN;
 
+-- Insert historical observations
 INSERT INTO WEATHER_FINAL
-SELECT OBS_TS_UTC, LAT, LON, TEMP_C, NULL, 'OBS', CURRENT_TIMESTAMP()
+SELECT 
+    OBS_TS_UTC,
+    LAT,
+    LON,
+    TEMP_C,
+    NULL AS PRED_TEMP_C,
+    'OBS' AS RECORD_TYPE,
+    CURRENT_TIMESTAMP()
 FROM WEATHER_OBSERVATION_HOURLY
 
 UNION ALL
 
-SELECT FORECAST_TS_UTC, LAT, LON, NULL, PRED_TEMP_C, 'FCST', CURRENT_TIMESTAMP()
+-- Insert forecast records
+SELECT
+    FORECAST_TS_UTC,
+    LAT,
+    LON,
+    NULL AS TEMP_C,
+    PRED_TEMP_C,
+    'FCST' AS RECORD_TYPE,
+    CURRENT_TIMESTAMP()
 FROM FORECAST_OUTPUT;
 
 COMMIT;
