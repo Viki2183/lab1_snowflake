@@ -1,5 +1,5 @@
 -- =========================================
--- LAB 1: FINAL UNION WITH TRANSACTION
+-- FINAL UNION WITH SQL TRANSACTION
 -- =========================================
 
 USE WAREHOUSE chipmunk_wh;
@@ -8,7 +8,6 @@ USE SCHEMA SCHEMA_WEATHER;
 
 BEGIN;
 
--- Insert historical observations
 INSERT INTO WEATHER_FINAL
 SELECT 
     OBS_TS_UTC,
@@ -22,7 +21,6 @@ FROM WEATHER_OBSERVATION_HOURLY
 
 UNION ALL
 
--- Insert forecast records
 SELECT
     FORECAST_TS_UTC,
     LAT,

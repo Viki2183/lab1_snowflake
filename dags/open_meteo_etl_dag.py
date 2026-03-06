@@ -76,28 +76,66 @@ def extract_and_load():
 def transform_hourly():
     hook = SnowflakeHook(snowflake_conn_id=SNOWFLAKE_CONN_ID)
 
-    # Explicit context (prevents future errors)
     hook.run("USE WAREHOUSE chipmunk_wh")
     hook.run("USE DATABASE user_db_chipmunk")
     hook.run("USE SCHEMA SCHEMA_WEATHER")
 
-    transform_sql = """
-    INSERT INTO WEATHER_OBSERVATION_HOURLY
+    # -----------------------------
+    # Insert Hourly Data
+    # -----------------------------
+    hourly_sql = """
+    INSERT INTO WEATHER_OBSERVATION_HOURLY (
+        LOCATION_NAME,
+        OBS_TS_UTC,
+        LAT,
+        LON,
+        TEMP_C,
+        REL_HUMIDITY_PCT,
+        WIND_SPEED_MS,
+        PRECIP_MM,
+        LOAD_TS_UTC
+    )
     SELECT
-        TO_TIMESTAMP_NTZ(t.value::string) AS OBS_TS_UTC,
+        r.LOCATION_NAME,
+        TO_TIMESTAMP_NTZ(t.value::string),
         r.LAT,
         r.LON,
         r.RESPONSE_JSON:hourly:temperature_2m[t.index]::float,
         r.RESPONSE_JSON:hourly:relative_humidity_2m[t.index]::float,
         r.RESPONSE_JSON:hourly:wind_speed_10m[t.index]::float,
         r.RESPONSE_JSON:hourly:precipitation[t.index]::float,
-        CURRENT_TIMESTAMP() AS LOAD_TS_UTC
+        CURRENT_TIMESTAMP()
     FROM OPEN_METEO_RAW r,
          LATERAL FLATTEN(input => r.RESPONSE_JSON:hourly:time) t;
     """
 
-    hook.run(transform_sql)
+    hook.run(hourly_sql)
 
+    # -----------------------------
+    # Insert Daily Aggregated Data
+    # -----------------------------
+    daily_sql = """
+    INSERT INTO WEATHER_DAILY (
+        LOCATION_NAME,
+        DATE,
+        TEMP_MAX,
+        TEMP_MIN,
+        TEMP_MEAN,
+        LOAD_TS_UTC
+    )
+    SELECT
+        r.LOCATION_NAME,
+        DATE(TO_TIMESTAMP_NTZ(t.value::string)),
+        MAX(r.RESPONSE_JSON:hourly:temperature_2m[t.index]::float),
+        MIN(r.RESPONSE_JSON:hourly:temperature_2m[t.index]::float),
+        AVG(r.RESPONSE_JSON:hourly:temperature_2m[t.index]::float),
+        CURRENT_TIMESTAMP()
+    FROM OPEN_METEO_RAW r,
+         LATERAL FLATTEN(input => r.RESPONSE_JSON:hourly:time) t
+    GROUP BY r.LOCATION_NAME, DATE(TO_TIMESTAMP_NTZ(t.value::string));
+    """
+
+    hook.run(daily_sql)
 # -----------------------------
 # 3️⃣ DAG Definition
 # -----------------------------
