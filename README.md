@@ -6,7 +6,7 @@ This project implements an end-to-end weather data analytics and forecasting pip
 
 The system automatically:
 
-- Retrieves 90 days of historical weather data for multiple locations  
+- Retrieves 60 days of historical weather data for multiple locations  
 - Stores raw API responses in Snowflake  
 - Transforms JSON data into structured hourly and daily tables  
 - Trains a Linear Regression model to forecast future temperatures  
