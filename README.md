@@ -43,7 +43,7 @@ Locations are configured using Airflow Variables.
 
 Performs data ingestion and transformation:
 
-- Extracts 90 days of historical weather data  
+- Extracts 60 days of historical weather data  
 - Loads raw JSON into `OPEN_METEO_RAW`  
 - Transforms hourly data into `WEATHER_OBSERVATION_HOURLY`  
 - Aggregates daily metrics into `WEATHER_DAILY`  
